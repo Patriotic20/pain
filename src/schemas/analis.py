@@ -8,8 +8,6 @@ class AnalisBase(BaseModel):
 class AnalisUpdate(BaseModel):
     name: str | None = None
 
+
 class AnalisResponse(AnalisBase):
     id: int
-
-
-

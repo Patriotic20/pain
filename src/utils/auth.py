@@ -1,6 +1,6 @@
-from jwt  import ExpiredSignatureError , InvalidTokenError 
-from fastapi import HTTPException , status , Depends
-from datetime import datetime , timezone , timedelta
+from jwt import ExpiredSignatureError, InvalidTokenError
+from fastapi import HTTPException, status, Depends
+from datetime import datetime, timezone, timedelta
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
@@ -8,7 +8,7 @@ from src.core.config import settings
 from src.models.user import User
 from sqlalchemy import select
 from src.core.base import get_db
-from typing import Callable , List
+from typing import Callable, List
 import asyncio
 import jwt
 
@@ -18,9 +18,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password , hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
-async def get_user(db: AsyncSession , username: str):
+
+async def get_user(db: AsyncSession, username: str):
     result = await db.execute(select(User).where(User.username == username))
     return result.scalars().first()
 
@@ -36,10 +37,7 @@ async def _create_token(data: dict, secret_key: str, expire_delta: timedelta) ->
     to_encode = data.copy()
     now = datetime.now(timezone.utc)
     expire = now + expire_delta
-    to_encode.update({
-        "iat": now,
-        "exp": expire
-    })
+    to_encode.update({"iat": now, "exp": expire})
     return await asyncio.to_thread(
         jwt.encode,
         to_encode,
@@ -47,29 +45,29 @@ async def _create_token(data: dict, secret_key: str, expire_delta: timedelta) ->
         algorithm=settings.ALGORITHM,
     )
 
+
 async def create_access_token(data: dict) -> str:
     expire_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return await _create_token(data, settings.ACCESS_SECRET_KEY, expire_delta)
+
 
 async def create_refresh_token(data: dict) -> str:
     expire_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     return await _create_token(data, settings.REFRESH_SECRET_KEY, expire_delta)
 
+
 async def refresh_access_token(refresh_token: str) -> str:
     try:
         payload = jwt.decode(
-            refresh_token,
-            settings.REFRESH_SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            refresh_token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         username = payload.get("sub")
         role = payload.get("role")
         if username is None:
-            raise HTTPException(status_code=401, detail="Invalid refresh token: 'sub' claim missing")
-        new_data = {
-            "sub": username, 
-            "role": role
-            }
+            raise HTTPException(
+                status_code=401, detail="Invalid refresh token: 'sub' claim missing"
+            )
+        new_data = {"sub": username, "role": role}
         access_token = await create_access_token(new_data)
         return access_token
     except ExpiredSignatureError:
@@ -78,18 +76,14 @@ async def refresh_access_token(refresh_token: str) -> str:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error{e}")
-    
 
 
 async def get_current_user(
-        token: str = Depends(oauth2_scheme),
-        db: AsyncSession = Depends(get_db)
-        ):
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+):
     try:
         payload = jwt.decode(
-            token,
-            settings.ACCESS_SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            token, settings.ACCESS_SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         username = payload.get("sub")
         if not username:
@@ -99,7 +93,7 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user = await get_user(db=db ,username=username)
+        user = await get_user(db=db, username=username)
         return user
 
     except jwt.ExpiredSignatureError:
@@ -115,17 +109,15 @@ async def get_current_user(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
 
 def RoleChecker(valid_roles: str | List[str]) -> Callable:
-    async def _role_checker(
-        user: User = Depends(get_current_user)  
-    ):
+    async def _role_checker(user: User = Depends(get_current_user)):
         roles = [valid_roles] if isinstance(valid_roles, str) else valid_roles
         if user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-                detail=f"Role '{user.role}' not allowed"
+                detail=f"Role '{user.role}' not allowed",
             )
         return user
 

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class OrderTimeBase(BaseModel):
     start_time: str
     end_time: str
@@ -11,6 +12,7 @@ class OrderTimeCreate(OrderTimeBase):
 
 class OrderTimeResponse(OrderTimeCreate):
     id: int
+
 
 class OrderTimeUpdate(BaseModel):
     start_time: str | None = None
