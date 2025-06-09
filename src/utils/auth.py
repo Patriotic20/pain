@@ -1,21 +1,25 @@
-from jwt import ExpiredSignatureError, InvalidTokenError
-from fastapi import HTTPException, status, Depends
-from datetime import datetime, timezone, timedelta
+import asyncio
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+
+import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from jwt import ExpiredSignatureError, InvalidTokenError
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.base import get_db
 from src.core.config import settings
 from src.models.user import User
-from sqlalchemy import select
-from src.core.base import get_db
-from typing import Callable, List
-import asyncio
-import jwt
-
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -111,7 +115,7 @@ async def get_current_user(
         )
 
 
-def RoleChecker(valid_roles: str | List[str]) -> Callable:
+def RoleChecker(valid_roles: str | list[str]) -> Callable:
     async def _role_checker(user: User = Depends(get_current_user)):
         roles = [valid_roles] if isinstance(valid_roles, str) else valid_roles
         if user.role not in roles:

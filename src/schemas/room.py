@@ -7,8 +7,10 @@ class RoomBase(BaseModel):
     start_time: str
     end_time: str
 
+
 class RoomCreate(RoomBase):
     lab_id: int
+
 
 class RoomUpdate(BaseModel):
     name: str

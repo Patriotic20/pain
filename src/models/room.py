@@ -1,7 +1,6 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from src.core.base import Base
-
 
 class Room(Base):
     __tablename__ = "rooms"
@@ -14,6 +13,5 @@ class Room(Base):
     end_time = Column(String, nullable=False)
 
     lab = relationship("Lab", back_populates="rooms")
-    time_slots = relationship(
-        "TimeSlot", back_populates="room", cascade="all, delete-orphan"
-    )
+    time_slots = relationship("TimeSlot", back_populates="room", cascade="all, delete-orphan")
+    room_services = relationship("RoomService", back_populates="room", cascade="all, delete-orphan")

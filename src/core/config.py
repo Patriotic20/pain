@@ -1,5 +1,5 @@
+# src/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 class Settings(BaseSettings):
     DB_USER: str
@@ -7,8 +7,7 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_PORT: str
     DB_NAME: str
-    MODE: str
-
+    MODE: str = "DEV"
     ACCESS_SECRET_KEY: str
     REFRESH_SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
@@ -16,7 +15,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
 
     @property
-    def connection_string(self):
+    def connection_string(self) -> str:
         return (
             f"postgresql+asyncpg://"
             f"{self.DB_USER}:"
@@ -26,6 +25,5 @@ class Settings(BaseSettings):
         )
 
     model_config = SettingsConfigDict(env_file=".env")
-
 
 settings = Settings()

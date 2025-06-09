@@ -1,7 +1,6 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from src.core.base import Base
-
 
 class TimeSlot(Base):
     __tablename__ = "time_slots"
@@ -12,6 +11,4 @@ class TimeSlot(Base):
     room_id = Column(Integer, ForeignKey("rooms.id"))
 
     room = relationship("Room", back_populates="time_slots")
-    orders = relationship(
-        "Order", back_populates="time_slot", cascade="all, delete-orphan"
-    )
+    orders = relationship("Order", back_populates="time_slot", cascade="all, delete-orphan")

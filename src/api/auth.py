@@ -1,35 +1,44 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.schemas.user import UserCreate, UserResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.core.base import get_db
 from src.models.user import User
+from src.schemas.user import UserCreate, UserResponse , UserBase
 from src.utils.auth import *
+from src.utils import BaseService , get_base_service
 
-auth_router = APIRouter(tags=["Auth"], prefix="/auth")
+auth_router = APIRouter(tags=["Auth Admin"], prefix="/auth")
 
 
 @auth_router.post("/register", response_model=UserResponse)
-async def register(user_item: UserCreate, db: AsyncSession = Depends(get_db)):
-    try:
-        new_user = User(**user_item.model_dump())
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        return new_user
-    except Exception as e:
-        await db.rollback()
+async def register(
+    user_item: UserBase, 
+    service : BaseService = Depends(get_base_service)
+    ):
+
+    user_data_existing = await service.get_by_field(model=User , field_name="username" , field_value=user_item.username)
+    if user_data_existing:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error {e}"
-        )
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already used"
+        ) 
+    user_password = hash_password(password=user_item.password)
+    user_data = UserCreate(
+        username=user_item.username,
+        password=user_password,
+        role= "admin"
+    )
+
+    return await service.create(model=User , db_obj=user_data)
 
 
 @auth_router.post("/login")
 async def register(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: AsyncSession = Depends(get_db)
 ):
-
-    user = await authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user(db, form_data.username , form_data.password)
 
     access_token = await create_access_token({"sub": user.username, "role": user.role})
 

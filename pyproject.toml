@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = ["migrations", ".venv"]
+
+# Enable additional rules
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "B",  # flake8-bugbear
+  "I",  # isort
+  "UP", # pyupgrade
+  "C90" # mccabe (complexity)
+]
+
+# Ignore specific rules
+ignore = [
+  "E501",  # line too long (handled by black)
+]

@@ -1,13 +1,19 @@
-from pydantic import BaseModel , Field
-from typing import List 
+
+from pydantic import BaseModel, Field
+
 
 class ServiceBase(BaseModel):
     name: str
     description: str
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class ServiceUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
+class LabService(BaseModel):
+    lab_id: int
+    services_id: int

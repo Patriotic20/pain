@@ -1,13 +1,12 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any, Dict, List, Type, TypeVar
+
 from fastapi import Depends, HTTPException, status
-from typing import TypeVar, Type, List, Dict
 from pydantic import BaseModel
-from sqlalchemy.exc import SQLAlchemyError
-from src.core.base import get_db
-from typing import Any
-
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.base import get_db
 
 ModelType = TypeVar("ModelType")
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -21,8 +20,10 @@ class BaseService:
     def __init__(self, db: AsyncSession = Depends(get_db)):
         self.db: AsyncSession = db
 
-    async def create(self, model: Type[ModelType], db_obj: SchemaType) -> ModelType:
+    async def create(self, model: type[ModelType], db_obj: SchemaType) -> ModelType:
         try:
+
+
             if not isinstance(db_obj, BaseModel):
                 raise ValueError("db_obj must be a Pydantic model")
 
@@ -55,10 +56,10 @@ class BaseService:
 
     async def get_by_id(
         self,
-        model: Type[ModelType],
+        model: type[ModelType],
         item_id: int,
         filter_field: int | None = None,
-        filter_value: Any = None
+        filter_value: Any = None,
     ) -> ModelType:
         try:
             if not isinstance(item_id, int) or item_id <= 0:
@@ -66,9 +67,11 @@ class BaseService:
 
             stmt = select(model).where(model.id == item_id)
             if filter_field and filter_value is not None:
-                if not hasattr(model , filter_field):
-                    raise ValueError(f"Model {model.__name__} has no field '{filter_field}'")
-                stmt = stmt.where(getattr(model , filter_field) == filter_value)
+                if not hasattr(model, filter_field):
+                    raise ValueError(
+                        f"Model {model.__name__} has no field '{filter_field}'"
+                    )
+                stmt = stmt.where(getattr(model, filter_field) == filter_value)
 
             result = await self.db.execute(stmt)
             item = result.scalars().first()
@@ -101,13 +104,13 @@ class BaseService:
 
     async def get_all(
         self,
-        model: Type[ModelType],
+        model: type[ModelType],
         filter_field: int | None = None,
         filter_value: Any = None,
         limit: int | None = 15,
         offset: int | None = 0,
-        search: Dict[str, any] | None = None,
-    ) -> List[ModelType]:
+        search: dict[str, any] | None = None,
+    ) -> list[ModelType]:
 
         try:
             if limit is not None and limit <= 0:
@@ -117,9 +120,11 @@ class BaseService:
 
             stmt = select(model)
             if filter_field and filter_value is not None:
-                if not hasattr(model , filter_field):
-                    raise ValueError(f"Model {model.__name__} has no field '{filter_field}'")
-                stmt = stmt.where(getattr(model , filter_field) == filter_value)
+                if not hasattr(model, filter_field):
+                    raise ValueError(
+                        f"Model {model.__name__} has no field '{filter_field}'"
+                    )
+                stmt = stmt.where(getattr(model, filter_field) == filter_value)
 
             if search:
                 for column, value in search.items():
@@ -154,7 +159,7 @@ class BaseService:
             )
 
     async def get_by_field(
-        self, model: Type[ModelType], field_name: str, field_value: any
+        self, model: type[ModelType], field_name: str, field_value: any
     ):
         try:
             if not field_name or not isinstance(field_name, str):
@@ -167,11 +172,11 @@ class BaseService:
             result = await self.db.execute(stmt)
             item = result.scalars().first()
 
-            if not item:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"{model.__name__} with {field_name}={field_value} not found",
-                )
+            # if not item:
+            #     raise HTTPException(
+            #         status_code=status.HTTP_404_NOT_FOUND,
+            #         detail=f"{model.__name__} with {field_name}={field_value} not found",
+            #     )
             return item
         except ValueError as ve:
             raise HTTPException(
@@ -193,14 +198,13 @@ class BaseService:
 
     async def update(
         self,
-        model: Type[ModelType],
+        model: type[ModelType],
         db_obj: SchemaType,
         item_id: int,
         filter_field: int | None = None,
         filter_value: Any = None,
     ) -> ModelType:
         try:
-
             if not isinstance(item_id, int) or item_id <= 0:
                 raise ValueError("item_id must be a positive integer")
             if not isinstance(db_obj, BaseModel):
@@ -208,9 +212,11 @@ class BaseService:
 
             stmt = select(model).where(model.id == item_id)
             if filter_field and filter_value is not None:
-                if not hasattr(model , filter_field):
-                    raise ValueError(f"Model {model.__name__} has no field '{filter_field}'")
-                stmt = stmt.where(getattr(model , filter_field) == filter_value)
+                if not hasattr(model, filter_field):
+                    raise ValueError(
+                        f"Model {model.__name__} has no field '{filter_field}'"
+                    )
+                stmt = stmt.where(getattr(model, filter_field) == filter_value)
             result = await self.db.execute(stmt)
             item = result.scalars().first()
 
@@ -223,7 +229,13 @@ class BaseService:
             # Update fields from Pydantic schema
             update_data = db_obj.model_dump(exclude_unset=True)
             for key, value in update_data.items():
-                if value in ("string", 0, "", None):
+                # Skip invalid or empty values
+                if value in ("string", "", 0, None):
+                    continue
+                # Skip lists that are empty or contain only "string" or empty strings
+                if isinstance(value, list) and (
+                    not value or value == ["string"] or value == [""]
+                ):
                     continue
                 if hasattr(item, key):
                     setattr(item, key, value)
@@ -242,14 +254,12 @@ class BaseService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Validation error: {str(ve)}",
             )
-
         except SQLAlchemyError as se:
             await self.db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error: {str(se)}",
             )
-
         except Exception as e:
             await self.db.rollback()
             raise HTTPException(
@@ -259,7 +269,7 @@ class BaseService:
 
     async def delete(
         self,
-        model: Type[ModelType],
+        model: type[ModelType],
         item_id: int,
         filter_field: int | None = None,
         filter_value: Any = None,
@@ -271,9 +281,11 @@ class BaseService:
 
             stmt = select(model).where(model.id == item_id)
             if filter_field and filter_value is not None:
-                if not hasattr(model , filter_field):
-                    raise ValueError(f"Model {model.__name__} has no field '{filter_field}'")
-                stmt = stmt.where(getattr(model , filter_field) == filter_value)
+                if not hasattr(model, filter_field):
+                    raise ValueError(
+                        f"Model {model.__name__} has no field '{filter_field}'"
+                    )
+                stmt = stmt.where(getattr(model, filter_field) == filter_value)
             result = await self.db.execute(stmt)
             item = result.scalars().first()
 
