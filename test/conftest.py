@@ -8,6 +8,11 @@ from sqlalchemy.ext.asyncio import (
 
 from src.core.base import Base
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+load_dotenv()
 
 class Settings(BaseSettings):
     DB_USER: str
@@ -38,7 +43,6 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture
 async def engine():
     engine = create_async_engine(settings.connection_string , echo = False)
 
@@ -53,8 +57,7 @@ async def engine():
 
 
 
-@pytest.fixture
-async def db_session(engine):
+async def db_session(engine: AsyncEngine = Depends(engine)):
     async_session = async_sessionmaker(
         engine, expire_on_commit=False , class_=AsyncSession
     )
