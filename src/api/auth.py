@@ -34,11 +34,17 @@ async def register(
 
 
 @auth_router.post("/login")
-async def register(
+async def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
     db: AsyncSession = Depends(get_db)
 ):
     user = await authenticate_user(db, form_data.username , form_data.password)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
 
     access_token = await create_access_token({"sub": user.username, "role": user.role})
 

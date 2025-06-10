@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import ( 
     create_async_engine, 
     AsyncSession, 
@@ -45,14 +46,12 @@ def event_loop():
 
 async def engine():
     engine = create_async_engine(settings.connection_string , echo = False)
-
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
     yield engine
-
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        
 
 
 
@@ -64,3 +63,6 @@ async def db_session(engine: AsyncEngine = Depends(engine)):
 
     async with async_session() as session:
         yield session
+
+
+
